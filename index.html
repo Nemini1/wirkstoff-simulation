@@ -1,25 +1,4 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Wirkstoff-Simulation (Pygame-Web)</title>
-    <style>
-        body {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            margin: 0;
-            background-color: #333;
-        }
-        canvas {
-            box-shadow: 0 0 20px rgba(0,0,0,0.5);
-        }
-    </style>
-</head>
-<body>
-    <canvas id="canvas" width="1200" height="800"></canvas>
-
-    <script type="text/javascript" src="https://cdn.jsdelivr.net/pyodide/v0.27.0/full/pyodide.js"></script>
+<script type="text/javascript" src="https://cdn.jsdelivr.net/pyodide/v0.27.0/full/pyodide.js"></script>
 
     <script type="text/javascript">
         // NEUE, STABILE URL FÜR ROBOTO REGULAR TTF
@@ -40,9 +19,9 @@
             await pyodide.loadPackage(["micropip"]); 
 
             console.log("Installiere Abhängigkeiten...");
-            // Stelle sicher, dass pygame_gui in der von Pyodide unterstützten Version installiert wird
             await pyodide.runPythonAsync(`
                 import micropip
+                # pygame_gui V0.6.9 ist die empfohlene Version für Web
                 await micropip.install([
                     "pygame-ce",
                     "pygame_gui==0.6.9", 
@@ -54,10 +33,10 @@
             // 2. Font und Theme Setup für pygame_gui
             console.log("Installiere Font...");
             try {
-                // FIX: Korrigierte URL verwenden
+                // FIX: Korrigierte URL verwenden und in das Pyodide-Dateisystem schreiben
                 const fontResponse = await fetch(ROBOTO_FONT_URL);
                 if (!fontResponse.ok) {
-                    throw new Error(\`Failed to fetch font: \${fontResponse.status} \${fontResponse.statusText}\`);
+                    throw new Error(`Failed to fetch font: ${fontResponse.status} ${fontResponse.statusText}`);
                 }
                 const fontBuffer = await fontResponse.arrayBuffer();
                 pyodide.FS.writeFile("font.ttf", new Uint8Array(fontBuffer));
@@ -73,14 +52,15 @@
 
             } catch (e) {
                 console.error("Font Fehler:", e);
-                console.log("Warning: theme.json not found, using default (might still crash).");
+                // Achtung: Wenn die Font hier fehlschlägt, ist der SystemError in Python trotzdem möglich.
             }
 
             // 3. Lade und starte das Hauptskript
             console.log("Lade Endprodukt.py...");
             try {
-                // Den Python-Code direkt ausführen, um Fehler beim Fetching zu vermeiden
-                const python_code = \`\${await (await fetch("Endprodukt.py")).text()}\`;
+                // Hier wurde der Syntax-Fehler wahrscheinlich verursacht.
+                // ACHTEN Sie darauf, dass nur Backticks (`) verwendet werden.
+                const python_code = `${await (await fetch("Endprodukt.py")).text()}`;
                 pyodide.FS.writeFile("Endprodukt.py", python_code, { encoding: 'utf8' });
                 
                 console.log("Starte Simulation...");
@@ -96,5 +76,3 @@
         
         main();
     </script>
-</body>
-</html>
