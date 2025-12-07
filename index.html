@@ -33,21 +33,23 @@
             await pyodide.loadPackage(["micropip"]); 
 
             // Führe das Installations-Skript aus.
-            // In v0.27.0 sollte die Standardinstallation von pygame-ce nun funktionieren.
-            console.log("Installiere ALLE Abhängigkeiten (pygame-ce, matplotlib, numpy, pygame_gui)...");
+            // WICHTIG: ALLE Pakete werden in EINEM Befehl installiert, um die Abhängigkeitsauflösung zu verbessern.
+            console.log("Installiere ALLE Abhängigkeiten in einem Schritt...");
             await pyodide.runPythonAsync(`
                 import micropip
                 
-                # Wir gehen davon aus, dass v0.27.0 die korrekten Wheels findet:
-                await micropip.install("pygame-ce")
-                await micropip.install("pygame_gui")
-                await micropip.install("matplotlib")
-                await micropip.install("numpy")
+                await micropip.install([
+                    "pygame-ce",
+                    "pygame_gui",
+                    "matplotlib",
+                    "numpy"
+                ])
             `);
 
             // Führe DEINE Python-Datei aus
             console.log("Führe Endprodukt.py aus...");
             await pyodide.runPythonAsync(`
+                # HINWEIS: Hier muss die Endprodukt.py ohne sys.exit() sein!
                 with open("Endprodukt.py", "r") as f:
                     exec(f.read())
             `);
