@@ -33,24 +33,22 @@
             await pyodide.loadPackage(["micropip"]); 
 
             // Führe das Installations-Skript aus.
-            // WICHTIG: Installation in einem Schritt mit keep_going=True, 
-            // um alle Abhängigkeiten zu installieren, auch wenn eine bestimmte Version fehlt.
-            console.log("Installiere ALLE Abhängigkeiten mit erweiterter Fehlerbehandlung...");
+            // WICHTIG: Erzwungene Version von pygame_gui, um den Konflikt zu lösen.
+            console.log("Installiere ALLE Abhängigkeiten mit bekanntermaßen kompatibler pygame_gui-Version...");
             await pyodide.runPythonAsync(`
                 import micropip
                 
                 await micropip.install([
                     "pygame-ce",
-                    "pygame_gui",
+                    "pygame_gui==0.6.9",  # HIER WIRD DIE VERSION GEZWUNGEN
                     "matplotlib",
                     "numpy"
-                ], keep_going=True) # <<< HIER IST DIE WICHTIGE ÄNDERUNG
+                ])
             `);
 
             // Führe DEINE Python-Datei aus
             console.log("Führe Endprodukt.py aus...");
             await pyodide.runPythonAsync(`
-                # HINWEIS: Hier muss die Endprodukt.py ohne sys.exit() sein!
                 with open("Endprodukt.py", "r") as f:
                     exec(f.read())
             `);
