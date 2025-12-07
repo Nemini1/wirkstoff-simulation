@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Meine Pygame-Simulation</title>
+    <style>
+        /* Zentriere die Leinwand (Canvas) */
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+
+    <script type="module">
+        import { loadPyodide } from "https://cdn.jsdelivr.net/pyodide/v0.25.1/full/pyodide.js";
+
+        // Funktion zum Starten der Simulation
+        async function main() {
+            // Lade Pyodide
+            const pyodide = await loadPyodide({
+                indexURL: "https://cdn.jsdelivr.net/pyodide/v0.25.1/full/",
+            });
+
+            // Installiere Pygame und andere notwendige Pakete
+            await pyodide.loadPackage(["pygame", "micropip"]);
+
+            // Lade und führe dein Python-Skript aus
+            await pyodide.runPythonAsync(`
+                import micropip
+                # Stelle sicher, dass pygame-ce (Community Edition) installiert wird
+                await micropip.install("pygame-ce")
+                
+                # Code deiner Python-Datei wird geladen und ausgeführt
+                with open("mein_spiel.py", "r") as f:
+                    exec(f.read())
+            `);
+        }
+        
+        main();
+    </script>
+</body>
+</html>
