@@ -11,6 +11,9 @@
             margin: 0;
             background-color: #333;
         }
+        canvas {
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        }
     </style>
 </head>
 <body>
@@ -19,17 +22,17 @@
     <script type="text/javascript" src="https://cdn.jsdelivr.net/pyodide/v0.27.0/full/pyodide.js"></script>
 
     <script type="text/javascript">
-        // 1. Emscripten Canvas Binding
-        var Module = {
-            canvas: document.getElementById('canvas')
-        };
-
         async function main() {
             console.log("Starte Pyodide...");
 
+            // 1. Pyodide Laden
             const pyodide = await loadPyodide({
                 indexURL: "https://cdn.jsdelivr.net/pyodide/v0.27.0/full/"
             });
+
+            // 2. DAS IST DER FIX: Verbinde den Canvas explizit mit der Pyodide API
+            // Dies verhindert den "createImageData" Fehler zuverlässig.
+            pyodide.canvas.setCanvas2D(document.getElementById("canvas"));
 
             console.log("Lade Paketmanager micropip...");
             await pyodide.loadPackage(["micropip"]); 
@@ -45,52 +48,42 @@
                 ])
             `);
             
-            // --- FONT FIX: Schriftart herunterladen und speichern ---
-            console.log("Lade Schriftart...");
+            // 3. Font und Theme Setup für pygame_gui
+            console.log("Installiere Font...");
             try {
-                // Lade Roboto von Google Fonts (als Binärdaten)
                 const fontResponse = await fetch("https://raw.githubusercontent.com/google/fonts/main/ofl/roboto/Roboto-Regular.ttf");
                 const fontBuffer = await fontResponse.arrayBuffer();
                 pyodide.FS.writeFile("font.ttf", new Uint8Array(fontBuffer));
                 
-                // Erstelle die theme.json Datei, die auf diese Schriftart verweist
                 const themeJson = JSON.stringify({
                     "font": {
-                        "regular": {
-                            "path": "font.ttf",
-                            "size": 14
-                        }
+                        "regular": { "path": "font.ttf", "size": 14 }
                     }
                 });
                 pyodide.FS.writeFile("theme.json", themeJson, { encoding: 'utf8' });
-                console.log("Font und Theme installiert.");
-
             } catch (e) {
-                console.error("Fehler beim Laden der Font:", e);
+                console.error("Font Fehler:", e);
             }
 
-            // --- DATEI LADEN ---
+            // 4. Lade und starte das Hauptskript
             console.log("Lade Endprodukt.py...");
             try {
                 const fileResponse = await fetch("Endprodukt.py");
                 const python_code = await fileResponse.text();
                 pyodide.FS.writeFile("Endprodukt.py", python_code, { encoding: 'utf8' });
                 
-                // --- START ---
-                console.log("Starte Simulation (async)...");
-                // Kurze Pause für den Canvas
-                await new Promise(resolve => setTimeout(resolve, 500));
-                
+                console.log("Starte Simulation...");
+                // Startet das Skript. Durch asyncio.sleep(0) im Python-Code bleibt der Browser reaktionsfähig.
                 await pyodide.runPythonAsync(`
                     import asyncio
                     from Endprodukt import main
-                    # Startet das asynchrone Programm
                     await main()
                 `);
             } catch (error) {
-                console.error("Fehler:", error);
+                console.error("Laufzeitfehler:", error);
             }
         }
+        
         main();
     </script>
 </body>
