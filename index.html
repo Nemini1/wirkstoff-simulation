@@ -1,26 +1,4 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Wirkstoff-Simulation (Pygame-Web)</title>
-    <style>
-        /* Zentriert die Leinwand (Canvas) im Browserfenster */
-        body {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            margin: 0;
-            /* Ändere den Hintergrund auf Dunkelgrau, passend zur Simulation */
-            background-color: #333; 
-        }
-    </style>
-</head>
-<body>
-    <canvas id="canvas"></canvas>
-
-    <script type="text/javascript" src="https://cdn.jsdelivr.net/pyodide/v0.25.1/full/pyodide.js"></script>
-
-    <script type="text/javascript">
+<script type="text/javascript">
         async function main() {
             console.log("Starte Pyodide...");
 
@@ -29,14 +7,17 @@
                 indexURL: "https://cdn.jsdelivr.net/pyodide/v0.25.1/full/",
             });
 
-            // Installiere Hauptpakete (pygame-ce ist die Web-Version von Pygame)
-            await pyodide.loadPackage(["pygame", "micropip"]);
+            // Lade NUR den Paketmanager micropip 
+            // Alle anderen Pakete (pygame, matplotlib etc.) werden per micropip installiert
+            console.log("Lade Paketmanager...");
+            await pyodide.loadPackage(["micropip"]);
 
-            // Installiere ZUSÄTZLICHE, im Code benötigte Pakete
-            console.log("Installiere pygame_gui, matplotlib, numpy...");
+            // Führe das Installations-Skript aus
+            console.log("Installiere alle Pygame-Abhängigkeiten...");
             await pyodide.runPythonAsync(`
                 import micropip
-                # Installiere die für den Browser optimierten Versionen
+                
+                # Installiere die für den Browser optimierten Versionen:
                 await micropip.install("pygame-ce")
                 await micropip.install("matplotlib")
                 await micropip.install("numpy")
@@ -53,5 +34,3 @@
         
         main();
     </script>
-</body>
-</html>
