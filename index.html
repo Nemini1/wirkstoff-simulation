@@ -1,25 +1,47 @@
-<script type="text/javascript" src="https://cdn.jsdelivr.net/pyodide/v0.27.0/full/pyodide.js"></script>
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Wirkstoff-Simulation (Pygame-Web)</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #333;
+        }
+        canvas {
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas" width="1200" height="800"></canvas>
+
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/pyodide/v0.27.0/full/pyodide.js"></script>
 
     <script type="text/javascript">
         // NEUE, STABILE URL FÜR ROBOTO REGULAR TTF
-        const ROBOTO_FONT_URL = "https://github.com/google/fonts/raw/main/apache/roboto/Roboto-Regular.ttf";
+        const ROBOTO_FONT_URL = "https://raw.githubusercontent.com/fontsource/fontsource/main/packages/roboto/files/roboto-latin-400-normal.ttf";
 
         async function main() {
             console.log("Starte Pyodide...");
 
+            // --- Fehlerbehebung: Canvas-Element prüfen ---
             const canvasElement = document.getElementById("canvas");
-            // Überprüfung des Canvas ist jetzt nur eine zusätzliche Sicherheit
             if (!canvasElement) {
                 console.error("Fatal Error: Das Canvas-Element mit der ID 'canvas' wurde nicht gefunden.");
-                return; 
+                return; // Beende die Funktion, wenn das Element fehlt
             }
+            // ---------------------------------------------
             
             // 1. Pyodide Laden
             const pyodide = await loadPyodide({
                 indexURL: "https://cdn.jsdelivr.net/pyodide/v0.27.0/full/"
             });
 
-            // FIX: Canvas der Pyodide API zuweisen
+            // FIX: Canvas der Pyodide API zuweisen (jetzt mit gesichertem Element)
             pyodide.canvas.setCanvas2D(canvasElement);
 
             console.log("Lade Paketmanager micropip...");
@@ -28,6 +50,7 @@
             console.log("Installiere Abhängigkeiten...");
             await pyodide.runPythonAsync(`
                 import micropip
+                # pygame_gui V0.6.9 ist die empfohlene Version für Web
                 await micropip.install([
                     "pygame-ce",
                     "pygame_gui==0.6.9", 
@@ -39,11 +62,10 @@
             // 2. Font und Theme Setup für pygame_gui
             console.log("Installiere Font...");
             try {
-                // NEUE, FUNKTIONIERENDE URL
+                // ... (Ihr Font-Code von vorher) ...
                 const fontResponse = await fetch(ROBOTO_FONT_URL);
                 if (!fontResponse.ok) {
-                    // WICHTIG: Wenn dies fehlschlägt, ist die URL möglicherweise wieder veraltet.
-                    throw new Error(\`Failed to fetch font: ${fontResponse.status} ${fontResponse.statusText}\`);
+                    throw new Error(`Failed to fetch font: ${fontResponse.status} ${fontResponse.statusText}`);
                 }
                 const fontBuffer = await fontResponse.arrayBuffer();
                 pyodide.FS.writeFile("font.ttf", new Uint8Array(fontBuffer));
@@ -69,6 +91,7 @@
                 console.log("Starte Simulation...");
                 await pyodide.runPythonAsync(`
                     import asyncio
+                    # Führe die Hauptfunktion aus dem Skript asynchron aus
                     from Endprodukt import main
                     await main()
                 `);
@@ -77,6 +100,8 @@
             }
         }
         
-        // DIES IST DER FIX: Warte, bis der gesamte DOM (inkl. Canvas) geladen ist
-        window.addEventListener('DOMContentLoaded', main);
+        // Startet die Funktion main, sobald das Skript geladen ist.
+        main();
     </script>
+</body>
+</html>
