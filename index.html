@@ -21,46 +21,47 @@
         #status {
             margin-bottom: 10px;
             font-size: 14px;
+            color: #ccc;
         }
     </style>
 </head>
 <body>
-    <div id="status">Lade Simulation...</div>
+    <div id="status">Initialisiere Umgebung...</div>
     <canvas id="canvas" width="1200" height="800" tabindex="1"></canvas>
 
     <script type="text/javascript" src="https://cdn.jsdelivr.net/pyodide/v0.27.0/full/pyodide.js"></script>
 
     <script type="text/javascript">
-        // STABILE CDN URL FÜR ROBOTO (Cloudflare)
-        const FONT_URL = "https://cdnjs.cloudflare.com/ajax/libs/roboto-fontface/0.10.0/fonts/roboto/Roboto-Regular.ttf";
+        // EXTREM STABILE URL via JSDelivr (Spiegelt GitHub, aber hochverfügbar)
+        const FONT_URL = "https://cdn.jsdelivr.net/gh/google/fonts/apache/roboto/Roboto-Regular.ttf";
         
-        // Name deiner Python-Datei
         const PYTHON_SCRIPT_NAME = "Simulation.py";
 
         function updateStatus(text) {
-            document.getElementById("status").innerText = text;
-            console.log(text);
+            const el = document.getElementById("status");
+            if (el) el.innerText = text;
+            console.log("[Status]", text);
         }
 
         async function main() {
-            updateStatus("Starte Pyodide...");
+            updateStatus("Lade Pyodide...");
             const canvasElement = document.getElementById("canvas");
             
-            // 1. Pyodide Laden
+            // 1. Pyodide starten
             let pyodide;
             try {
                 pyodide = await loadPyodide({
                     indexURL: "https://cdn.jsdelivr.net/pyodide/v0.27.0/full/"
                 });
             } catch (e) {
-                updateStatus("Fehler beim Laden von Pyodide: " + e);
+                updateStatus("Fehler: Pyodide konnte nicht geladen werden.");
                 return;
             }
 
             pyodide.canvas.setCanvas2D(canvasElement);
 
-            // 2. Pakete installieren
-            updateStatus("Installiere Python-Bibliotheken...");
+            // 2. Python-Pakete installieren
+            updateStatus("Installiere Pakete (Dauert kurz)...");
             await pyodide.loadPackage("micropip");
             const micropip = pyodide.pyimport("micropip");
             
@@ -72,41 +73,38 @@
                     "numpy"
                 ]);
             } catch (e) {
-                updateStatus("Fehler bei Installation der Pakete: " + e);
+                updateStatus("Fehler bei Paket-Installation: " + e);
                 return;
             }
 
-            // 3. WICHTIG: Font Laden (Mit Error Handling)
+            // 3. Schriftart laden (Robust)
             updateStatus("Lade Schriftart...");
             try {
                 const fontResponse = await fetch(FONT_URL);
-                if (!fontResponse.ok) throw new Error(`HTTP Fehler ${fontResponse.status}`);
+                if (!fontResponse.ok) throw new Error(`HTTP ${fontResponse.status}`);
                 
                 const fontBuffer = await fontResponse.arrayBuffer();
-                // Schreibe Font ins virtuelle Dateisystem
                 pyodide.FS.writeFile("font.ttf", new Uint8Array(fontBuffer));
                 
-                // Erstelle theme.json, die auf font.ttf verweist
                 const themeJson = JSON.stringify({
                     "font": {
                         "regular": { "path": "font.ttf", "size": 14 }
                     }
                 });
                 pyodide.FS.writeFile("theme.json", themeJson, { encoding: 'utf8' });
-                console.log("Font und Theme erfolgreich erstellt.");
+                console.log("Font/Theme installiert.");
 
             } catch (e) {
-                updateStatus("KRITISCH: Schriftart konnte nicht geladen werden. " + e);
                 console.error(e);
-                alert("Fehler: Schriftart konnte nicht geladen werden. Simulation wird abstürzen.");
-                return; // Stoppe hier, da es sonst zum Absturz kommt
+                updateStatus("WARNUNG: Schriftart nicht geladen. Starte im Safe-Mode.");
+                // Wir stoppen nicht, Python fängt das jetzt ab!
             }
 
-            // 4. Python Skript laden und starten
-            updateStatus("Lade " + PYTHON_SCRIPT_NAME + "...");
+            // 4. Python Skript ausführen
+            updateStatus("Starte " + PYTHON_SCRIPT_NAME + "...");
             try {
                 const response = await fetch(PYTHON_SCRIPT_NAME);
-                if (!response.ok) throw new Error(`Datei nicht gefunden: ${PYTHON_SCRIPT_NAME}`);
+                if (!response.ok) throw new Error("Datei nicht gefunden. Hast du Simulation.py hochgeladen?");
                 
                 const python_code = await response.text();
                 pyodide.FS.writeFile(PYTHON_SCRIPT_NAME, python_code, { encoding: 'utf8' });
@@ -120,8 +118,8 @@
                     await main()
                 `);
             } catch (error) {
-                updateStatus("Python Laufzeitfehler (siehe Konsole F12).");
-                console.error("Python Error:", error);
+                updateStatus("Absturz: Siehe Browser-Konsole (F12)");
+                console.error(error);
             }
         }
         
