@@ -1,53 +1,34 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Wirkstoff-Simulation (Pygame-Web)</title>
-    <style>
-        /* Zentriert die Leinwand (Canvas) im Browserfenster */
-        body {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            margin: 0;
-            background-color: #333; /* Dunkler Hintergrund */
-        }
-    </style>
-</head>
-<body>
-    <canvas id="canvas"></canvas>
-
-    <script type="text/javascript" src="https://cdn.jsdelivr.net/pyodide/v0.26.1/full/pyodide.js"></script>
-
-    <script type="text/javascript">
+<script type="text/javascript">
         async function main() {
             console.log("Starte Pyodide...");
 
-            // Lade Pyodide (loadPyodide ist jetzt verfügbar)
+            // Lade Pyodide (v0.26.1)
             const pyodide = await loadPyodide({
-                // WICHTIG: indexURL auf v0.26.1 aktualisiert.
                 indexURL: "https://cdn.jsdelivr.net/pyodide/v0.26.1/full/", 
             });
 
-            // Lade NUR den Paketmanager micropip
-            console.log("Lade Paketmanager micropip...");
-            await pyodide.loadPackage(["micropip"]);
+            // Lade Pygame und Micropip direkt mit loadPackage (was stabiler ist)
+            console.log("Lade Pygame (als Core-Paket) und Paketmanager micropip...");
+            await pyodide.loadPackage(["pygame", "micropip"]); 
+            // HINWEIS: Pygame wird hier als vorkompiliertes Wasm-Modul geladen, was den Konflikt umgeht.
 
-            // Führe das Installations-Skript aus (installiert alle Abhängigkeiten)
-            console.log("Installiere alle Pygame-Abhängigkeiten (pygame-ce, matplotlib, numpy, pygame_gui)...");
+            // Führe das Installations-Skript aus (installiert die restlichen Abhängigkeiten)
+            console.log("Installiere zusätzliche Abhängigkeiten (matplotlib, numpy, pygame_gui)...");
             await pyodide.runPythonAsync(`
                 import micropip
                 
                 # Installiere die für den Browser optimierten Versionen:
-                await micropip.install("pygame-ce")
+                # Wir lassen pygame-ce hier weg, da es bereits oben über 'pygame' geladen wurde
                 await micropip.install("matplotlib")
                 await micropip.install("numpy")
+                # Installiere pygame_gui. Es sollte jetzt die korrekte Abhängigkeit nutzen können.
                 await micropip.install("pygame_gui") 
             `);
 
             // Führe DEINE Python-Datei aus
             console.log("Führe Endprodukt.py aus...");
             await pyodide.runPythonAsync(`
+                # Wichtig: Gehen Sie sicher, dass alle sys.exit() Blöcke in Endprodukt.py entfernt wurden!
                 with open("Endprodukt.py", "r") as f:
                     exec(f.read())
             `);
@@ -56,5 +37,3 @@
         // Starte die Hauptfunktion
         main();
     </script>
-</body>
-</html>
