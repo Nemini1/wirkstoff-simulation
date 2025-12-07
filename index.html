@@ -8,6 +8,7 @@
             console.log("Starte Pyodide...");
 
             const canvasElement = document.getElementById("canvas");
+            // Überprüfung des Canvas ist jetzt nur eine zusätzliche Sicherheit
             if (!canvasElement) {
                 console.error("Fatal Error: Das Canvas-Element mit der ID 'canvas' wurde nicht gefunden.");
                 return; 
@@ -27,7 +28,6 @@
             console.log("Installiere Abhängigkeiten...");
             await pyodide.runPythonAsync(`
                 import micropip
-                # pygame_gui V0.6.9 ist die empfohlene Version für Web
                 await micropip.install([
                     "pygame-ce",
                     "pygame_gui==0.6.9", 
@@ -39,15 +39,15 @@
             // 2. Font und Theme Setup für pygame_gui
             console.log("Installiere Font...");
             try {
-                // NEUE, KORRIGIERTE URL WIRD VERWENDET
+                // NEUE, FUNKTIONIERENDE URL
                 const fontResponse = await fetch(ROBOTO_FONT_URL);
                 if (!fontResponse.ok) {
-                    throw new Error(`Failed to fetch font: ${fontResponse.status} ${fontResponse.statusText}`);
+                    // WICHTIG: Wenn dies fehlschlägt, ist die URL möglicherweise wieder veraltet.
+                    throw new Error(\`Failed to fetch font: ${fontResponse.status} ${fontResponse.statusText}\`);
                 }
                 const fontBuffer = await fontResponse.arrayBuffer();
                 pyodide.FS.writeFile("font.ttf", new Uint8Array(fontBuffer));
                 
-                // Erstelle theme.json, die auf die lokal gespeicherte font.ttf verweist
                 const themeJson = JSON.stringify({
                     "font": {
                         "regular": { "path": "font.ttf", "size": 14 }
@@ -58,7 +58,6 @@
 
             } catch (e) {
                 console.error("Font Fehler:", e);
-                // Achtung: Wenn die Font hier fehlschlägt, ist der SystemError in Python trotzdem möglich.
             }
 
             // 3. Lade und starte das Hauptskript
@@ -78,5 +77,6 @@
             }
         }
         
-        main();
+        // DIES IST DER FIX: Warte, bis der gesamte DOM (inkl. Canvas) geladen ist
+        window.addEventListener('DOMContentLoaded', main);
     </script>
