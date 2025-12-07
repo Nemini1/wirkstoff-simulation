@@ -1,4 +1,25 @@
-<script type="text/javascript" src="https://cdn.jsdelivr.net/pyodide/v0.27.0/full/pyodide.js"></script>
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Wirkstoff-Simulation (Pygame-Web)</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #333;
+        }
+        canvas {
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas" width="1200" height="800"></canvas>
+
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/pyodide/v0.27.0/full/pyodide.js"></script>
 
     <script type="text/javascript">
         // NEUE, STABILE URL FÜR ROBOTO REGULAR TTF
@@ -7,13 +28,21 @@
         async function main() {
             console.log("Starte Pyodide...");
 
+            // --- Fehlerbehebung: Canvas-Element prüfen ---
+            const canvasElement = document.getElementById("canvas");
+            if (!canvasElement) {
+                console.error("Fatal Error: Das Canvas-Element mit der ID 'canvas' wurde nicht gefunden.");
+                return; // Beende die Funktion, wenn das Element fehlt
+            }
+            // ---------------------------------------------
+            
             // 1. Pyodide Laden
             const pyodide = await loadPyodide({
                 indexURL: "https://cdn.jsdelivr.net/pyodide/v0.27.0/full/"
             });
 
-            // FIX: Canvas der Pyodide API zuweisen
-            pyodide.canvas.setCanvas2D(document.getElementById("canvas"));
+            // FIX: Canvas der Pyodide API zuweisen (jetzt mit gesichertem Element)
+            pyodide.canvas.setCanvas2D(canvasElement);
 
             console.log("Lade Paketmanager micropip...");
             await pyodide.loadPackage(["micropip"]); 
@@ -33,7 +62,7 @@
             // 2. Font und Theme Setup für pygame_gui
             console.log("Installiere Font...");
             try {
-                // FIX: Korrigierte URL verwenden und in das Pyodide-Dateisystem schreiben
+                // ... (Ihr Font-Code von vorher) ...
                 const fontResponse = await fetch(ROBOTO_FONT_URL);
                 if (!fontResponse.ok) {
                     throw new Error(`Failed to fetch font: ${fontResponse.status} ${fontResponse.statusText}`);
@@ -41,7 +70,6 @@
                 const fontBuffer = await fontResponse.arrayBuffer();
                 pyodide.FS.writeFile("font.ttf", new Uint8Array(fontBuffer));
                 
-                // Erstelle theme.json, die auf die lokal gespeicherte font.ttf verweist
                 const themeJson = JSON.stringify({
                     "font": {
                         "regular": { "path": "font.ttf", "size": 14 }
@@ -52,20 +80,18 @@
 
             } catch (e) {
                 console.error("Font Fehler:", e);
-                // Achtung: Wenn die Font hier fehlschlägt, ist der SystemError in Python trotzdem möglich.
             }
 
             // 3. Lade und starte das Hauptskript
             console.log("Lade Endprodukt.py...");
             try {
-                // Hier wurde der Syntax-Fehler wahrscheinlich verursacht.
-                // ACHTEN Sie darauf, dass nur Backticks (`) verwendet werden.
                 const python_code = `${await (await fetch("Endprodukt.py")).text()}`;
                 pyodide.FS.writeFile("Endprodukt.py", python_code, { encoding: 'utf8' });
                 
                 console.log("Starte Simulation...");
                 await pyodide.runPythonAsync(`
                     import asyncio
+                    # Führe die Hauptfunktion aus dem Skript asynchron aus
                     from Endprodukt import main
                     await main()
                 `);
@@ -74,5 +100,8 @@
             }
         }
         
+        // Startet die Funktion main, sobald das Skript geladen ist.
         main();
     </script>
+</body>
+</html>
