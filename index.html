@@ -33,14 +33,14 @@
             await pyodide.loadPackage(["micropip"]); 
 
             // Führe das Installations-Skript aus.
-            // WICHTIG: ALLE Pakete werden in EINEM Befehl installiert, um die Abhängigkeitsauflösung zu verbessern.
-            console.log("Installiere ALLE Abhängigkeiten in einem Schritt...");
+            // WICHTIG: Erzwinge pygame_gui==0.5.8, um den Versionskonflikt zu lösen.
+            console.log("Installiere ALLE Abhängigkeiten mit erzwungener Kompatibilität...");
             await pyodide.runPythonAsync(`
                 import micropip
                 
                 await micropip.install([
                     "pygame-ce",
-                    "pygame_gui",
+                    "pygame_gui==0.5.8",  # Version erzwungen, um 2.4.1 Konflikt zu umgehen
                     "matplotlib",
                     "numpy"
                 ])
