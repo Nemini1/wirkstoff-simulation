@@ -19,16 +19,17 @@
     <script type="text/javascript" src="https://cdn.jsdelivr.net/pyodide/v0.27.0/full/pyodide.js"></script>
 
     <script type="text/javascript">
+        // 1. Emscripten Canvas Binding
+        var Module = {
+            canvas: document.getElementById('canvas')
+        };
+
         async function main() {
             console.log("Starte Pyodide...");
 
-            // Lade Pyodide und verknüpfe den Canvas
             const pyodide = await loadPyodide({
                 indexURL: "https://cdn.jsdelivr.net/pyodide/v0.27.0/full/"
             });
-            
-            // Setze den Canvas explizit für SDL (Pygame)
-            pyodide.canvas.setCanvas2D(document.getElementById("canvas"));
 
             console.log("Lade Paketmanager micropip...");
             await pyodide.loadPackage(["micropip"]); 
@@ -44,18 +45,46 @@
                 ])
             `);
             
+            // --- FONT FIX: Schriftart herunterladen und speichern ---
+            console.log("Lade Schriftart...");
+            try {
+                // Lade Roboto von Google Fonts (als Binärdaten)
+                const fontResponse = await fetch("https://raw.githubusercontent.com/google/fonts/main/ofl/roboto/Roboto-Regular.ttf");
+                const fontBuffer = await fontResponse.arrayBuffer();
+                pyodide.FS.writeFile("font.ttf", new Uint8Array(fontBuffer));
+                
+                // Erstelle die theme.json Datei, die auf diese Schriftart verweist
+                const themeJson = JSON.stringify({
+                    "font": {
+                        "regular": {
+                            "path": "font.ttf",
+                            "size": 14
+                        }
+                    }
+                });
+                pyodide.FS.writeFile("theme.json", themeJson, { encoding: 'utf8' });
+                console.log("Font und Theme installiert.");
+
+            } catch (e) {
+                console.error("Fehler beim Laden der Font:", e);
+            }
+
+            // --- DATEI LADEN ---
             console.log("Lade Endprodukt.py...");
             try {
                 const fileResponse = await fetch("Endprodukt.py");
                 const python_code = await fileResponse.text();
                 pyodide.FS.writeFile("Endprodukt.py", python_code, { encoding: 'utf8' });
                 
+                // --- START ---
                 console.log("Starte Simulation (async)...");
-                // Wir nutzen runPythonAsync, da wir jetzt asyncio im Python-Code verwenden
+                // Kurze Pause für den Canvas
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
                 await pyodide.runPythonAsync(`
                     import asyncio
                     from Endprodukt import main
-                    # Startet das asynchrone Programm, ohne den Browser zu blockieren
+                    # Startet das asynchrone Programm
                     await main()
                 `);
             } catch (error) {
