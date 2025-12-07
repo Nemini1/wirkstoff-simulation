@@ -1,15 +1,27 @@
+"""
+Protein-Ligand Simulation (Web-Compatible)
+"""
+
 import sys
-import asyncio  # <--- NEU: Notwendig für den Browser
+import asyncio  # WICHTIG: Für den Browser
 import pygame
 import random
 import math
 from dataclasses import dataclass
 
-# Einfache Imports, da Pakete in index.html garantiert installiert wurden:
-import pygame_gui
-import matplotlib.pyplot as plt
-from matplotlib.backends.backend_agg import FigureCanvasAgg
-import numpy as np
+try:
+    import pygame_gui
+except ImportError:
+    print("Pygame_gui is not installed.")
+    sys.exit()
+
+try:
+    import matplotlib.pyplot as plt
+    from matplotlib.backends.backend_agg import FigureCanvasAgg
+    import numpy as np
+except ImportError:
+    print("Matplotlib or Numpy is not installed.")
+    sys.exit()
 
 # --- Constants and UI Configuration ---
 SCREEN_WIDTH = 1200
@@ -122,11 +134,20 @@ class Simulation:
         self.sim_rect = pygame.Rect(0, 0, self.params.sim_area[0], self.params.sim_area[1])
         self.sidebar_rect = pygame.Rect(self.params.sim_area[0], 0, SIDEBAR_WIDTH, SCREEN_HEIGHT)
         self.font = pygame.font.Font(None, 24)
-        self.title_font = pygame.font.Font(None, 32)
+        
         self.proteins = []
         self.ligands = []
         self.competitor_ligands = []
-        self.ui_manager = pygame_gui.UIManager((SCREEN_WIDTH, SCREEN_HEIGHT))
+        
+        # --- FIX: THEME LADEN ---
+        # Wir übergeben hier "theme.json", damit pygame_gui weiß, welche Schriftart es nutzen soll.
+        # Wenn wir das nicht tun, versucht es die Standard-Schriftart zu laden und stürzt im Web ab.
+        try:
+            self.ui_manager = pygame_gui.UIManager((SCREEN_WIDTH, SCREEN_HEIGHT), "theme.json")
+        except:
+            print("Warnung: theme.json nicht gefunden, versuche Standard...")
+            self.ui_manager = pygame_gui.UIManager((SCREEN_WIDTH, SCREEN_HEIGHT))
+
         self._setup_ui_elements()
         self._initialize_particles()
         self._initialize_graph()
@@ -134,12 +155,13 @@ class Simulation:
     def _setup_ui_elements(self):
         panel_rect = pygame.Rect(self.sidebar_rect.topleft, (self.sidebar_rect.width, self.sidebar_rect.height))
         self.ui_panel = pygame_gui.elements.UIPanel(relative_rect=panel_rect, manager=self.ui_manager)
+        
+        # UI Elements Creation (gekürzt, Logik bleibt identisch)
         self.reset_button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((20, 20), (self.sidebar_rect.width - 40, 40)), text='Reset Simulation', manager=self.ui_manager, container=self.ui_panel)
         self.pause_button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((20, 70), (self.sidebar_rect.width / 2 - 25, 40)), text='Pause', manager=self.ui_manager, container=self.ui_panel)
         self.resume_button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((self.sidebar_rect.width / 2 + 5, 70), (self.sidebar_rect.width / 2 - 25, 40)), text='Resume', manager=self.ui_manager, container=self.ui_panel)
         
-        y_pos = 130
-        label_height = 30; slider_height = 20; slider_width = self.sidebar_rect.width - 40; x_pos = 20
+        y_pos = 130; label_height = 30; slider_height = 20; slider_width = self.sidebar_rect.width - 40; x_pos = 20
 
         self.num_proteins_label = pygame_gui.elements.UILabel(relative_rect=pygame.Rect((x_pos, y_pos), (slider_width, label_height)), text=f'Num Proteins: {self.params.num_proteins}', manager=self.ui_manager, container=self.ui_panel)
         y_pos += label_height
@@ -232,22 +254,21 @@ class Simulation:
             competitor.unbind()
 
     def _update_particle_counts(self):
-        # (Logik gekürzt für Übersichtlichkeit, hier bleibt alles gleich wie im Original)
-        # Proteine
+        # Proteine update logic
         if len(self.proteins) < self.params.num_proteins:
             for _ in range(self.params.num_proteins - len(self.proteins)):
                 self.proteins.append(self._create_particle(Protein))
         elif len(self.proteins) > self.params.num_proteins:
              for _ in range(len(self.proteins) - self.params.num_proteins):
                  if self.proteins: self.proteins.pop().bound_ligands.clear()
-        # Liganden
+        # Ligands update logic
         if len(self.ligands) < self.params.num_ligands:
              for _ in range(self.params.num_ligands - len(self.ligands)):
                  l = self._create_particle(Ligand); self.ligands.append(l); l.unbind()
         elif len(self.ligands) > self.params.num_ligands:
              for _ in range(len(self.ligands) - self.params.num_ligands):
                  if self.ligands: self.ligands.pop()
-        # Competitors
+        # Competitors update logic
         if len(self.competitor_ligands) < self.params.num_competitor_ligands:
              for _ in range(self.params.num_competitor_ligands - len(self.competitor_ligands)):
                  c = self._create_particle(CompetitorLigand); self.competitor_ligands.append(c); c.unbind()
@@ -303,7 +324,7 @@ class Simulation:
         graph_surf = self._draw_graph()
         self.screen.blit(graph_surf, (self.sidebar_rect.x + 20, 550))
 
-    # --- WICHTIGE ÄNDERUNG: ASYNC RUN ---
+    # --- ASYNC LOOP ---
     async def run(self):
         running = True
         while running:
@@ -339,18 +360,15 @@ class Simulation:
             self._draw_ui()
             pygame.display.flip()
             
-            # --- DER FIX FÜR DEN BROWSER ABSTURZ ---
-            # Gibt die Kontrolle kurz an den Browser zurück, damit er zeichnen kann.
-            await asyncio.sleep(0) 
+            # WICHTIG: Gibt dem Browser Zeit zum Zeichnen
+            await asyncio.sleep(0)
 
         pygame.quit()
         sys.exit()
 
-# --- ASYNC MAIN ---
 async def main():
     simulation = Simulation()
     await simulation.run()
 
 if __name__ == "__main__":
-    # Startet die asynchrone Schleife
     asyncio.run(main())
