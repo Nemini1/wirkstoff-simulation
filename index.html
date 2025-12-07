@@ -13,56 +13,65 @@
         }
         canvas {
             box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            /* Wichtig, um Fokus-Outlines zu vermeiden */
+            outline: none;
         }
     </style>
 </head>
 <body>
-    <canvas id="canvas" width="1200" height="800"></canvas>
+    <canvas id="canvas" width="1200" height="800" tabindex="1"></canvas>
 
     <script type="text/javascript" src="https://cdn.jsdelivr.net/pyodide/v0.27.0/full/pyodide.js"></script>
 
     <script type="text/javascript">
-        // NEUE, STABILE URL FÜR ROBOTO REGULAR TTF
-        const ROBOTO_FONT_URL = "https://raw.githubusercontent.com/fontsource/fontsource/main/packages/roboto/files/roboto-latin-400-normal.ttf";
+        // NEUE, FUNKTIONIERENDE URL FÜR ROBOTO REGULAR TTF (Direkt von Google Fonts Repo)
+        const ROBOTO_FONT_URL = "https://raw.githubusercontent.com/google/fonts/main/apache/roboto/Roboto-Regular.ttf";
+        
+        // Name deiner Python-Datei (muss mit der hochgeladenen Datei übereinstimmen)
+        const PYTHON_SCRIPT_NAME = "Simulation.py";
 
         async function main() {
             console.log("Starte Pyodide...");
-
-            // --- Fehlerbehebung: Canvas-Element prüfen ---
             const canvasElement = document.getElementById("canvas");
+            
             if (!canvasElement) {
-                console.error("Fatal Error: Das Canvas-Element mit der ID 'canvas' wurde nicht gefunden.");
-                return; // Beende die Funktion, wenn das Element fehlt
+                console.error("Fatal Error: Canvas nicht gefunden.");
+                return;
             }
-            // ---------------------------------------------
             
             // 1. Pyodide Laden
-            const pyodide = await loadPyodide({
-                indexURL: "https://cdn.jsdelivr.net/pyodide/v0.27.0/full/"
-            });
+            let pyodide;
+            try {
+                pyodide = await loadPyodide({
+                    indexURL: "https://cdn.jsdelivr.net/pyodide/v0.27.0/full/"
+                });
+            } catch (e) {
+                console.error("Fehler beim Laden von Pyodide:", e);
+                return;
+            }
 
-            // FIX: Canvas der Pyodide API zuweisen (jetzt mit gesichertem Element)
+            // Canvas zuweisen
             pyodide.canvas.setCanvas2D(canvasElement);
 
-            console.log("Lade Paketmanager micropip...");
-            await pyodide.loadPackage(["micropip"]); 
-
             console.log("Installiere Abhängigkeiten...");
-            await pyodide.runPythonAsync(`
-                import micropip
-                # pygame_gui V0.6.9 ist die empfohlene Version für Web
+            await pyodide.loadPackage("micropip");
+            const micropip = pyodide.pyimport("micropip");
+            
+            try {
                 await micropip.install([
                     "pygame-ce",
                     "pygame_gui==0.6.9", 
                     "matplotlib",
                     "numpy"
-                ])
-            `);
-            
+                ]);
+            } catch (e) {
+                console.error("Fehler bei der Installation der Python-Pakete:", e);
+                return;
+            }
+
             // 2. Font und Theme Setup für pygame_gui
-            console.log("Installiere Font...");
+            console.log("Lade Font von:", ROBOTO_FONT_URL);
             try {
-                // ... (Ihr Font-Code von vorher) ...
                 const fontResponse = await fetch(ROBOTO_FONT_URL);
                 if (!fontResponse.ok) {
                     throw new Error(`Failed to fetch font: ${fontResponse.status} ${fontResponse.statusText}`);
@@ -70,6 +79,7 @@
                 const fontBuffer = await fontResponse.arrayBuffer();
                 pyodide.FS.writeFile("font.ttf", new Uint8Array(fontBuffer));
                 
+                // Theme JSON erstellen
                 const themeJson = JSON.stringify({
                     "font": {
                         "regular": { "path": "font.ttf", "size": 14 }
@@ -79,28 +89,42 @@
                 console.log("Font und Theme erfolgreich installiert.");
 
             } catch (e) {
-                console.error("Font Fehler:", e);
+                console.error("KRITISCHER FONT FEHLER:", e);
+                alert("Die Schriftart konnte nicht geladen werden. Simulation kann evtl. nicht starten.");
+                // Wir stoppen hier nicht zwingend, aber pygame_gui wird wahrscheinlich crashen, 
+                // wenn wir keine gültige Font haben.
             }
 
             // 3. Lade und starte das Hauptskript
-            console.log("Lade Endprodukt.py...");
+            console.log(`Lade ${PYTHON_SCRIPT_NAME}...`);
             try {
-                const python_code = `${await (await fetch("Endprodukt.py")).text()}`;
-                pyodide.FS.writeFile("Endprodukt.py", python_code, { encoding: 'utf8' });
+                const response = await fetch(PYTHON_SCRIPT_NAME);
+                if (!response.ok) {
+                     throw new Error(`Konnte ${PYTHON_SCRIPT_NAME} nicht laden (Status: ${response.status}). Liegt die Datei im gleichen Ordner?`);
+                }
+                const python_code = await response.text();
+                
+                // Schreibe den Code ins virtuelle Dateisystem von Pyodide
+                pyodide.FS.writeFile(PYTHON_SCRIPT_NAME, python_code, { encoding: 'utf8' });
                 
                 console.log("Starte Simulation...");
+                // Wichtig: Dateinamen hier anpassen (ohne .py für Import)
+                const moduleName = PYTHON_SCRIPT_NAME.replace(".py", "");
+                
                 await pyodide.runPythonAsync(`
                     import asyncio
-                    # Führe die Hauptfunktion aus dem Skript asynchron aus
-                    from Endprodukt import main
+                    # Importiere das Modul, das wir gerade geschrieben haben
+                    from ${moduleName} import main
+                    
+                    # Starte die asynchrone Hauptfunktion
                     await main()
                 `);
             } catch (error) {
-                console.error("Laufzeitfehler:", error);
+                console.error("Laufzeitfehler in Python:", error);
+                alert("Ein Fehler ist aufgetreten (siehe Konsole F12).");
             }
         }
         
-        // Startet die Funktion main, sobald das Skript geladen ist.
         main();
     </script>
 </body>
