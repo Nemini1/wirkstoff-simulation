@@ -15,7 +15,7 @@
     </style>
 </head>
 <body>
-    <canvas id="canvas"></canvas>
+    <canvas id="canvas" width="1200" height="800"></canvas>
 
     <script type="text/javascript" src="https://cdn.jsdelivr.net/pyodide/v0.27.0/full/pyodide.js"></script>
 
@@ -50,11 +50,10 @@
             
             let python_code;
             try {
-                // 1. Rufe die Datei Endprodukt.py vom Server ab (mit JavaScript)
                 const fileResponse = await fetch("Endprodukt.py");
                 python_code = await fileResponse.text();
 
-                // 2. Schreibe den Inhalt in das virtuelle Dateisystem von Pyodide
+                // Schreibe den Inhalt in das virtuelle Dateisystem von Pyodide
                 pyodide.FS.writeFile("Endprodukt.py", python_code, { encoding: 'utf8' });
                 
             } catch (error) {
@@ -62,12 +61,14 @@
                 return; 
             }
 
-            // Führe DEINE Python-Datei aus
-            // WICHTIG: Verwende pyodide.runPython() synchron, um den Pygame-Loop richtig zu starten.
+            // Führe DEINE Python-Datei synchron aus.
             console.log("Führe Endprodukt.py aus...");
-            pyodide.runPython(python_code); // <<< Synchroner Aufruf der geladenen Datei
-
-            // WICHTIG: Die Simulation wird jetzt im synchronen Aufruf gestartet.
+            
+            // HINWEIS: Ein Pygame-Haupt-Loop blockiert den Browser. 
+            // Obwohl runPython() synchron ist und zu einer Warnung führt, ist es oft der einzige Weg, 
+            // eine Standard-Pygame-Anwendung in Pyodide zum Laufen zu bringen. 
+            // Der Canvas-Fix sollte den fatalen Fehler nun beheben.
+            pyodide.runPython(python_code); 
         }
         
         // Starte die Hauptfunktion
