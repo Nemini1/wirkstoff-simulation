@@ -28,20 +28,20 @@
                 indexURL: "https://cdn.jsdelivr.net/pyodide/v0.26.1/full/", 
             });
 
-            // Lade Pygame und Micropip direkt als Core-Pakete. 
-            // Das umgeht den Versionskonflikt, da es die vorkompilierte Version lädt.
-            console.log("Lade Pygame (als Core-Paket) und Paketmanager micropip...");
-            await pyodide.loadPackage(["pygame", "micropip"]); 
+            // Lade NUR den Paketmanager micropip (als Core-Paket)
+            console.log("Lade Paketmanager micropip...");
+            await pyodide.loadPackage(["micropip"]); 
 
-            // Führe das Installations-Skript aus (installiert die restlichen Abhängigkeiten)
-            console.log("Installiere zusätzliche Abhängigkeiten (matplotlib, numpy, pygame_gui)...");
+            // Führe das Installations-Skript aus (installiert ALLE Abhängigkeiten per micropip)
+            // Dies ist notwendig, da 'pygame' nicht mehr im direkten Index von Pyodide v0.26.1 ist.
+            console.log("Installiere ALLE Abhängigkeiten (pygame-ce, matplotlib, numpy, pygame_gui)...");
             await pyodide.runPythonAsync(`
                 import micropip
                 
-                # Installiere die für den Browser optimierten Versionen:
+                # Installiere ALLE benötigten Pakete über micropip:
+                await micropip.install("pygame-ce")
                 await micropip.install("matplotlib")
                 await micropip.install("numpy")
-                # pygame_gui wird jetzt nach pygame geladen, was den Versionskonflikt behebt.
                 await micropip.install("pygame_gui") 
             `);
 
