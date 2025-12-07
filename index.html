@@ -32,8 +32,8 @@
     <script type="text/javascript" src="https://cdn.jsdelivr.net/pyodide/v0.27.0/full/pyodide.js"></script>
 
     <script type="text/javascript">
-        // EXTREM STABILE URL via JSDelivr (Spiegelt GitHub, aber hochverfügbar)
-        const FONT_URL = "https://cdn.jsdelivr.net/gh/google/fonts/apache/roboto/Roboto-Regular.ttf";
+        // NEUE KORREKTE URL: Der Pfad im Google-Fonts-Repository wurde angepasst (static/ hinzugefügt).
+        const FONT_URL = "https://raw.githubusercontent.com/google/fonts/main/apache/roboto/static/Roboto-Regular.ttf";
         
         const PYTHON_SCRIPT_NAME = "Simulation.py";
 
@@ -79,6 +79,7 @@
 
             // 3. Schriftart laden (Robust)
             updateStatus("Lade Schriftart...");
+            let font_load_success = false;
             try {
                 const fontResponse = await fetch(FONT_URL);
                 if (!fontResponse.ok) throw new Error(`HTTP ${fontResponse.status}`);
@@ -93,18 +94,18 @@
                 });
                 pyodide.FS.writeFile("theme.json", themeJson, { encoding: 'utf8' });
                 console.log("Font/Theme installiert.");
+                font_load_success = true;
 
             } catch (e) {
-                console.error(e);
-                updateStatus("WARNUNG: Schriftart nicht geladen. Starte im Safe-Mode.");
-                // Wir stoppen nicht, Python fängt das jetzt ab!
+                console.error("KRITISCH: Font-Download fehlgeschlagen.", e);
+                updateStatus("WARNUNG: Schriftart nicht geladen. UI (Slider) nicht verfügbar.");
             }
 
             // 4. Python Skript ausführen
             updateStatus("Starte " + PYTHON_SCRIPT_NAME + "...");
             try {
                 const response = await fetch(PYTHON_SCRIPT_NAME);
-                if (!response.ok) throw new Error("Datei nicht gefunden. Hast du Simulation.py hochgeladen?");
+                if (!response.ok) throw new Error("Datei nicht gefunden.");
                 
                 const python_code = await response.text();
                 pyodide.FS.writeFile(PYTHON_SCRIPT_NAME, python_code, { encoding: 'utf8' });
