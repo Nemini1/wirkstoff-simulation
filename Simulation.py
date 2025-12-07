@@ -1,5 +1,5 @@
 """
-Protein-Ligand Simulation (Browser Optimized)
+Protein-Ligand Simulation (Robust Version)
 """
 
 import asyncio
@@ -10,8 +10,14 @@ from dataclasses import dataclass
 import sys
 import os
 
-# Imports
-import pygame_gui
+# Optional Imports (Graceful degradation)
+try:
+    import pygame_gui
+    UI_AVAILABLE = True
+except ImportError:
+    UI_AVAILABLE = False
+    print("Warning: pygame_gui not found.")
+
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_agg import FigureCanvasAgg
 import numpy as np
@@ -133,24 +139,26 @@ class Simulation:
         self.ligands = []
         self.competitor_ligands = []
         
-        # --- UI SETUP ---
-        # Wir überprüfen explizit, ob die Theme-Dateien da sind.
-        if not os.path.exists("theme.json") or not os.path.exists("font.ttf"):
-            print("FATAL ERROR: theme.json or font.ttf missing. JS loading failed.")
-            # Wir beenden hier, weil pygame_gui sonst crasht
-            return 
+        # --- ROBUST UI SETUP ---
+        self.ui_manager = None
+        if UI_AVAILABLE:
+            if os.path.exists("theme.json") and os.path.exists("font.ttf"):
+                try:
+                    self.ui_manager = pygame_gui.UIManager((SCREEN_WIDTH, SCREEN_HEIGHT), "theme.json")
+                    self._setup_ui_elements()
+                except Exception as e:
+                    print(f"UI Error: {e}")
+                    self.ui_manager = None
+            else:
+                print("WARNING: theme.json or font.ttf missing. Starting in SAFE MODE (No UI).")
+                # Fallback: No UI, just simulation
 
-        try:
-            self.ui_manager = pygame_gui.UIManager((SCREEN_WIDTH, SCREEN_HEIGHT), "theme.json")
-        except Exception as e:
-            print(f"UI Manager Init Error: {e}")
-            raise e
-
-        self._setup_ui_elements()
         self._initialize_particles()
         self._initialize_graph()
 
     def _setup_ui_elements(self):
+        if not self.ui_manager: return
+        
         panel_rect = pygame.Rect(self.sidebar_rect.topleft, (self.sidebar_rect.width, self.sidebar_rect.height))
         self.ui_panel = pygame_gui.elements.UIPanel(relative_rect=panel_rect, manager=self.ui_manager)
         
@@ -243,7 +251,6 @@ class Simulation:
         renderer = canvas.get_renderer()
         raw_data = renderer.buffer_rgba()
         size = canvas.get_width_height()
-        
         plt.close(fig)
         
         return pygame.image.frombuffer(raw_data, size, "RGBA")
@@ -331,8 +338,10 @@ class Simulation:
         for ligand in self.ligands + self.competitor_ligands:
             pygame.draw.circle(self.screen, ligand.color, (int(ligand.position.x), int(ligand.position.y)), int(ligand.radius))
         
-        self.ui_manager.update(self.clock.get_time() / 1000.0)
-        self.ui_manager.draw_ui(self.screen)
+        # UI nur zeichnen, wenn der Manager existiert
+        if self.ui_manager:
+            self.ui_manager.update(self.clock.get_time() / 1000.0)
+            self.ui_manager.draw_ui(self.screen)
         
         graph_surf = self._draw_graph()
         self.screen.blit(graph_surf, (self.sidebar_rect.x + 20, 550))
@@ -349,25 +358,26 @@ class Simulation:
                     elif event.key == pygame.K_SPACE: self.paused = not self.paused
                     elif event.key == pygame.K_r: self._initialize_particles(); self._initialize_graph()
                 
-                self.ui_manager.process_events(event)
-                
-                if event.type == pygame_gui.UI_BUTTON_PRESSED:
-                    if event.ui_element == self.reset_button: self._initialize_particles(); self._initialize_graph()
-                    elif event.ui_element == self.pause_button: self.paused = True
-                    elif event.ui_element == self.resume_button: self.paused = False
-                if event.type == pygame_gui.UI_HORIZONTAL_SLIDER_MOVED:
-                    if event.ui_element == self.num_proteins_slider:
-                        self.params.num_proteins = int(event.value); self.num_proteins_label.set_text(f'Num Proteins: {self.params.num_proteins}'); self._update_particle_counts()
-                    elif event.ui_element == self.num_ligands_slider:
-                        self.params.num_ligands = int(event.value); self.num_ligands_label.set_text(f'Num Ligands: {self.params.num_ligands}'); self._update_particle_counts()
-                    elif event.ui_element == self.num_competitor_ligands_slider:
-                        self.params.num_competitor_ligands = int(event.value); self.num_competitor_ligands_label.set_text(f'Num Competitors: {self.params.num_competitor_ligands}'); self._update_particle_counts()
-                    elif event.ui_element == self.temp_slider:
-                        self.params.temperature = event.value; self.temp_label.set_text(f'Temperature: {event.value:.2f}')
-                    elif event.ui_element == self.kon_slider:
-                        self.params.k_on = event.value; self.kon_label.set_text(f'Ligand Binding Prob. (k_on): {event.value:.2f}')
-                    elif event.ui_element == self.kon_competitor_slider:
-                        self.params.k_on_competitor = event.value; self.kon_competitor_label.set_text(f'Competitor Binding Prob. (k_on): {event.value:.2f}')
+                # Events nur verarbeiten, wenn UI Manager existiert
+                if self.ui_manager:
+                    self.ui_manager.process_events(event)
+                    if event.type == pygame_gui.UI_BUTTON_PRESSED:
+                        if event.ui_element == self.reset_button: self._initialize_particles(); self._initialize_graph()
+                        elif event.ui_element == self.pause_button: self.paused = True
+                        elif event.ui_element == self.resume_button: self.paused = False
+                    if event.type == pygame_gui.UI_HORIZONTAL_SLIDER_MOVED:
+                        if event.ui_element == self.num_proteins_slider:
+                            self.params.num_proteins = int(event.value); self.num_proteins_label.set_text(f'Num Proteins: {self.params.num_proteins}'); self._update_particle_counts()
+                        elif event.ui_element == self.num_ligands_slider:
+                            self.params.num_ligands = int(event.value); self.num_ligands_label.set_text(f'Num Ligands: {self.params.num_ligands}'); self._update_particle_counts()
+                        elif event.ui_element == self.num_competitor_ligands_slider:
+                            self.params.num_competitor_ligands = int(event.value); self.num_competitor_ligands_label.set_text(f'Num Competitors: {self.params.num_competitor_ligands}'); self._update_particle_counts()
+                        elif event.ui_element == self.temp_slider:
+                            self.params.temperature = event.value; self.temp_label.set_text(f'Temperature: {event.value:.2f}')
+                        elif event.ui_element == self.kon_slider:
+                            self.params.k_on = event.value; self.kon_label.set_text(f'Ligand Binding Prob. (k_on): {event.value:.2f}')
+                        elif event.ui_element == self.kon_competitor_slider:
+                            self.params.k_on_competitor = event.value; self.kon_competitor_label.set_text(f'Competitor Binding Prob. (k_on): {event.value:.2f}')
 
             self._update_simulation()
             self._update_graph_data()
