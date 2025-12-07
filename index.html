@@ -20,14 +20,20 @@
     <script type="text/javascript" src="https://cdn.jsdelivr.net/pyodide/v0.27.0/full/pyodide.js"></script>
 
     <script type="text/javascript">
+        
+        // KRITISCHER EMCLIPSTEN FIX: Definiert die Canvas-Verknüpfung 
+        // über das globale Module-Objekt, was die robusteste Methode ist.
+        var Module = {
+            canvas: document.getElementById('canvas')
+        };
+
         async function main() {
             console.log("Starte Pyodide...");
 
             // Lade Pyodide (v0.27.0)
-            // WICHTIG: Füge canvasId hinzu, um den SDL/Emscripten-Canvas-Kontextfehler zu beheben
+            // HINWEIS: canvasId wurde hier entfernt, da Module.canvas jetzt verwendet wird
             const pyodide = await loadPyodide({
-                indexURL: "https://cdn.jsdelivr.net/pyodide/v0.27.0/full/", 
-                canvasId: "canvas"
+                indexURL: "https://cdn.jsdelivr.net/pyodide/v0.27.0/full/"
             });
 
             // Lade NUR den Paketmanager micropip
@@ -41,7 +47,7 @@
                 
                 await micropip.install([
                     "pygame-ce",
-                    "pygame_gui==0.6.9",  # Erzwungene Version
+                    "pygame_gui==0.6.9", 
                     "matplotlib",
                     "numpy"
                 ])
@@ -63,9 +69,9 @@
                 return; 
             }
             
-            // *** KRITISCHER NEUER FIX: Zwangspause für Canvas-Initialisierung ***
-            // Dies behebt den hartnäckigen "createImageData" TypeError.
-            await new Promise(resolve => setTimeout(resolve, 100));
+            // *** KRITISCHER FIX: Verlängerte Zwangspause für Canvas-Initialisierung ***
+            // 500ms geben dem Browser Zeit, den Kontext vor Pygame-Start vollständig zu registrieren.
+            await new Promise(resolve => setTimeout(resolve, 500));
             // *******************************************************************
 
             // Führe DEINE Python-Datei synchron aus, um den Pygame-Loop zu starten.
