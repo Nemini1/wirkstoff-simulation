@@ -1,19 +1,39 @@
-<script type="text/javascript">
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Wirkstoff-Simulation (Pygame-Web)</title>
+    <style>
+        /* Zentriert die Leinwand (Canvas) im Browserfenster */
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #333; /* Dunkler Hintergrund */
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/pyodide/v0.25.1/full/pyodide.js"></script>
+
+    <script type="text/javascript">
         async function main() {
             console.log("Starte Pyodide...");
 
-            // Lade Pyodide (loadPyodide ist jetzt verfügbar)
+            // Lade Pyodide (loadPyodide ist jetzt verfügbar, weil es im Skript 1 definiert wurde)
             const pyodide = await loadPyodide({
                 indexURL: "https://cdn.jsdelivr.net/pyodide/v0.25.1/full/",
             });
 
-            // Lade NUR den Paketmanager micropip 
-            // Alle anderen Pakete (pygame, matplotlib etc.) werden per micropip installiert
-            console.log("Lade Paketmanager...");
+            // Lade NUR den Paketmanager micropip
+            console.log("Lade Paketmanager micropip...");
             await pyodide.loadPackage(["micropip"]);
 
-            // Führe das Installations-Skript aus
-            console.log("Installiere alle Pygame-Abhängigkeiten...");
+            // Führe das Installations-Skript aus (installiert alle Abhängigkeiten)
+            console.log("Installiere alle Pygame-Abhängigkeiten (pygame-ce, matplotlib, numpy, pygame_gui)...");
             await pyodide.runPythonAsync(`
                 import micropip
                 
@@ -32,5 +52,8 @@
             `);
         }
         
+        // Starte die Hauptfunktion
         main();
     </script>
+</body>
+</html>
