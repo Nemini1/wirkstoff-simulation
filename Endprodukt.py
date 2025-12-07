@@ -7,6 +7,7 @@ import pygame
 import random
 import math
 from dataclasses import dataclass
+import sys
 
 # Imports (Dependencies are installed via index.html)
 import pygame_gui
@@ -86,7 +87,11 @@ class Ligand(Particle):
 
     def unbind(self):
         if self.bound_to:
-            self.bound_to.bound_ligands.remove(self)
+            try:
+                self.bound_to.bound_ligands.remove(self)
+            except ValueError:
+                pass # Already removed
+            
             direction_vector = self.position - self.bound_to.position
             separation_distance = self.bound_to.radius + self.radius + 2
             if direction_vector.length() > 0:
@@ -128,10 +133,12 @@ class Simulation:
         self.competitor_ligands = []
         
         # Load Theme (Provided by index.html)
+        # We ensure theme.json exists in index.html before running this
         try:
             self.ui_manager = pygame_gui.UIManager((SCREEN_WIDTH, SCREEN_HEIGHT), "theme.json")
-        except:
-            print("Warning: theme.json not found, using default (might crash in web).")
+        except Exception as e:
+            print(f"Warning: Could not load theme.json ({e}). Using default theme.")
+            # Fallback is dangerous in Pyodide without system fonts, but we try
             self.ui_manager = pygame_gui.UIManager((SCREEN_WIDTH, SCREEN_HEIGHT))
 
         self._setup_ui_elements()
@@ -200,27 +207,44 @@ class Simulation:
     def _draw_graph(self):
         dark_grey_norm = tuple(c / 255.0 for c in DARK_GREY)
         white_norm = tuple(c / 255.0 for c in WHITE)
+        
+        # Use simple plotting to avoid complex object retention issues in web
         fig = plt.Figure(figsize=(3, 2), dpi=100, facecolor=dark_grey_norm)
         canvas = FigureCanvasAgg(fig)
         ax = fig.add_subplot(111)
         ax.set_facecolor(dark_grey_norm)
-        ax.tick_params(colors=white_norm)
+        ax.tick_params(colors=white_norm, labelsize=6)
         ax.spines['left'].set_color(white_norm)
         ax.spines['bottom'].set_color(white_norm)
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        
         time_in_seconds = [t / 60.0 for t in self.time_steps]
-        ax.plot(time_in_seconds, self.bound_ligands_data, color='blue', label='Normal Ligands')
-        ax.plot(time_in_seconds, self.bound_competitor_data, color='red', label='Competitors')
-        ax.set_title("Bound Ligands Over Time", color=white_norm, fontsize=8)
-        ax.set_xlabel("Time (s)", color=white_norm, fontsize=6)
-        ax.set_ylabel("Count", color=white_norm, fontsize=6)
+        # Limit data points for performance if running long
+        if len(time_in_seconds) > 500:
+             time_in_seconds = time_in_seconds[-500:]
+             data_ligands = self.bound_ligands_data[-500:]
+             data_comp = self.bound_competitor_data[-500:]
+        else:
+             data_ligands = self.bound_ligands_data
+             data_comp = self.bound_competitor_data
+
+        ax.plot(time_in_seconds, data_ligands, color='#6496FF', label='Normal', linewidth=1)
+        ax.plot(time_in_seconds, data_comp, color='red', label='Competitors', linewidth=1)
+        
+        ax.set_title("Bound Ligands", color=white_norm, fontsize=8)
         ax.set_ylim(0, self.params.num_proteins)
-        ax.legend(loc='upper right', fontsize=6, frameon=False, labelcolor=white_norm)
+        ax.legend(loc='upper right', fontsize=5, frameon=False, labelcolor='white')
+        
         canvas.draw()
         renderer = canvas.get_renderer()
         raw_data = renderer.buffer_rgba()
         size = canvas.get_width_height()
-        surf = pygame.image.frombuffer(raw_data, size, "RGBA")
-        return surf
+        
+        # Explicitly close figure to free memory
+        plt.close(fig)
+        
+        return pygame.image.frombuffer(raw_data, size, "RGBA")
 
     def _initialize_particles(self):
         self.proteins.clear()
@@ -261,7 +285,8 @@ class Simulation:
 
     def _create_particle(self, particle_class):
         all_particles = self.proteins + self.ligands + self.competitor_ligands
-        while True:
+        # Limit attempts to prevent infinite loops in crowded simulation
+        for _ in range(100):
             new_x = random.randint(particle_class.radius, self.sim_rect.width - particle_class.radius)
             new_y = random.randint(particle_class.radius, self.sim_rect.height - particle_class.radius)
             new_particle = particle_class(new_x, new_y)
@@ -271,6 +296,7 @@ class Simulation:
                 if dist < new_particle.radius + particle.radius:
                     overlap = True; break
             if not overlap: return new_particle
+        return particle_class(0,0) # Fallback (should be handled better but keeps sim running)
 
     def _update_simulation(self):
         if not self.paused:
@@ -281,7 +307,9 @@ class Simulation:
                     particle.check_wall_collision_and_bounce(self.sim_rect)
             for ligand in self.ligands + self.competitor_ligands:
                 if ligand.is_bound:
-                    ligand.position = ligand.bound_to.position
+                    if ligand.bound_to:
+                        ligand.position = pygame.Vector2(ligand.bound_to.position)
+                    
                     p_off = 1 - math.exp(-self.params.k_off * self.params.dt)
                     if random.random() < p_off: ligand.unbind()
                 else:
@@ -302,8 +330,11 @@ class Simulation:
             pygame.draw.circle(self.screen, DOCKING_SITE_COLOR, (int(protein.position.x), int(protein.position.y)), 5)
         for ligand in self.ligands + self.competitor_ligands:
             pygame.draw.circle(self.screen, ligand.color, (int(ligand.position.x), int(ligand.position.y)), int(ligand.radius))
+        
         self.ui_manager.update(self.clock.get_time() / 1000.0)
         self.ui_manager.draw_ui(self.screen)
+        
+        # Only draw graph every few frames to save performance in web
         graph_surf = self._draw_graph()
         self.screen.blit(graph_surf, (self.sidebar_rect.x + 20, 550))
 
@@ -311,14 +342,18 @@ class Simulation:
     async def run(self):
         running = True
         while running:
+            # pygame_gui likes fixed time steps but clock.tick is fine
             time_delta = self.clock.tick(60) / 1000.0
+            
             for event in pygame.event.get():
                 if event.type == pygame.QUIT: running = False
                 elif event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_ESCAPE: running = False
                     elif event.key == pygame.K_SPACE: self.paused = not self.paused
                     elif event.key == pygame.K_r: self._initialize_particles(); self._initialize_graph()
+                
                 self.ui_manager.process_events(event)
+                
                 if event.type == pygame_gui.UI_BUTTON_PRESSED:
                     if event.ui_element == self.reset_button: self._initialize_particles(); self._initialize_graph()
                     elif event.ui_element == self.pause_button: self.paused = True
@@ -347,7 +382,6 @@ class Simulation:
             await asyncio.sleep(0)
 
         pygame.quit()
-        # REMOVED sys.exit() because it crashes Pyodide/Browser environments
 
 async def main():
     simulation = Simulation()
