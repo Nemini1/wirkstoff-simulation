@@ -16,31 +16,11 @@ from dataclasses import dataclass
 
  
 
-try: 
+import pygame_gui 
 
-    import pygame_gui 
-
-except ImportError: 
-
-    print("Pygame_gui is not installed. Please install it with 'pip install pygame_gui'") 
-
-    sys.exit() 
-
- 
-
-try: 
-
-    import matplotlib.pyplot as plt 
-
-    from matplotlib.backends.backend_agg import FigureCanvasAgg 
-
-    import numpy as np 
-
-except ImportError: 
-
-    print("Matplotlib or Numpy is not installed. Please install it with 'pip install matplotlib numpy'") 
-
-    sys.exit() 
+import matplotlib.pyplot as plt 
+from matplotlib.backends.backend_agg import FigureCanvasAgg 
+import numpy as np
 
  
 
@@ -1319,5 +1299,6 @@ if __name__ == "__main__":
     main() 
 
  
+
 
  
