@@ -39,17 +39,17 @@
                 
                 await micropip.install([
                     "pygame-ce",
-                    "pygame_gui==0.6.9",  // Erzwungene Version, um Konflikte zu vermeiden
+                    "pygame_gui==0.6.9",  # Erzwungene Version, um Konflikte zu vermeiden (JETZT MIT RAUTENZEICHEN #)
                     "matplotlib",
                     "numpy"
                 ])
             `);
             
-            // NEUER SCHRITT: Lade die Datei Endprodukt.py vom Server in das virtuelle Dateisystem
+            // Lade die Datei Endprodukt.py vom Server in das virtuelle Dateisystem (DAS WAR DER VORHERIGE FEHLER)
             console.log("Lade Endprodukt.py in das Pyodide-Dateisystem...");
             await pyodide.loadFiles(["Endprodukt.py"]);
 
-            // Führe DEINE Python-Datei aus (die Datei ist jetzt im VFS verfügbar)
+            // Führe DEINE Python-Datei aus
             console.log("Führe Endprodukt.py aus...");
             await pyodide.runPythonAsync(`
                 # Die Datei wird nun erfolgreich vom VFS gelesen.
