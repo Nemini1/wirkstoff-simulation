@@ -33,22 +33,26 @@
             await pyodide.loadPackage(["micropip"]); 
 
             // Führe das Installations-Skript aus.
-            // WICHTIG: Erzwungene Version von pygame_gui, um den Konflikt zu lösen.
             console.log("Installiere ALLE Abhängigkeiten mit bekanntermaßen kompatibler pygame_gui-Version...");
             await pyodide.runPythonAsync(`
                 import micropip
                 
                 await micropip.install([
                     "pygame-ce",
-                    "pygame_gui==0.6.9",  # HIER WIRD DIE VERSION GEZWUNGEN
+                    "pygame_gui==0.6.9",  // Erzwungene Version, um Konflikte zu vermeiden
                     "matplotlib",
                     "numpy"
                 ])
             `);
+            
+            // NEUER SCHRITT: Lade die Datei Endprodukt.py vom Server in das virtuelle Dateisystem
+            console.log("Lade Endprodukt.py in das Pyodide-Dateisystem...");
+            await pyodide.loadFiles(["Endprodukt.py"]);
 
-            // Führe DEINE Python-Datei aus
+            // Führe DEINE Python-Datei aus (die Datei ist jetzt im VFS verfügbar)
             console.log("Führe Endprodukt.py aus...");
             await pyodide.runPythonAsync(`
+                # Die Datei wird nun erfolgreich vom VFS gelesen.
                 with open("Endprodukt.py", "r") as f:
                     exec(f.read())
             `);
