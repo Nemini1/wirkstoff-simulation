@@ -17,33 +17,30 @@
 <body>
     <canvas id="canvas"></canvas>
 
-    <script type="text/javascript" src="https://cdn.jsdelivr.net/pyodide/v0.26.1/full/pyodide.js"></script>
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/pyodide/v0.27.0/full/pyodide.js"></script>
 
     <script type="text/javascript">
         async function main() {
             console.log("Starte Pyodide...");
 
-            // Lade Pyodide (v0.26.1)
+            // Lade Pyodide (v0.27.0)
             const pyodide = await loadPyodide({
-                indexURL: "https://cdn.jsdelivr.net/pyodide/v0.26.1/full/", 
+                indexURL: "https://cdn.jsdelivr.net/pyodide/v0.27.0/full/", 
             });
 
             // Lade NUR den Paketmanager micropip
             console.log("Lade Paketmanager micropip...");
             await pyodide.loadPackage(["micropip"]); 
 
-            // Führe das Installations-Skript aus
+            // Führe das Installations-Skript aus.
+            // In v0.27.0 sollte die Standardinstallation von pygame-ce nun funktionieren.
             console.log("Installiere ALLE Abhängigkeiten (pygame-ce, matplotlib, numpy, pygame_gui)...");
             await pyodide.runPythonAsync(`
                 import micropip
                 
-                # Wir installieren pygame-ce und pygame_gui HIER explizit mit einer Version.
-                # Dies umgeht den Versionskonflikt, den pygame_gui mit der von micropip
-                # standardmäßig gefundenen pygame-ce Version 2.4.1 hat.
-                await micropip.install("pygame-ce>=2.5.3")
-                await micropip.install("pygame_gui") 
-                
-                # Installiere die restlichen Pakete:
+                # Wir gehen davon aus, dass v0.27.0 die korrekten Wheels findet:
+                await micropip.install("pygame-ce")
+                await micropip.install("pygame_gui")
                 await micropip.install("matplotlib")
                 await micropip.install("numpy")
             `);
