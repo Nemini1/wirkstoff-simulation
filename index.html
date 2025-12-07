@@ -1,43 +1,52 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Meine Pygame-Simulation</title>
+    <title>Wirkstoff-Simulation (Pygame-Web)</title>
     <style>
-        /* Zentriere die Leinwand (Canvas) */
+        /* Zentriert die Leinwand (Canvas) im Browserfenster */
         body {
             display: flex;
             justify-content: center;
             align-items: center;
             min-height: 100vh;
             margin: 0;
-            background-color: #f0f0f0;
+            /* Ändere den Hintergrund auf Dunkelgrau, passend zur Simulation */
+            background-color: #333; 
         }
     </style>
 </head>
 <body>
     <canvas id="canvas"></canvas>
 
-    <script type="module">
-        import { loadPyodide } from "https://cdn.jsdelivr.net/pyodide/v0.25.1/full/pyodide.js";
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/pyodide/v0.25.1/full/pyodide.js"></script>
 
-        // Funktion zum Starten der Simulation
+    <script type="text/javascript">
         async function main() {
-            // Lade Pyodide
+            console.log("Starte Pyodide...");
+
+            // Lade Pyodide (loadPyodide ist jetzt verfügbar)
             const pyodide = await loadPyodide({
                 indexURL: "https://cdn.jsdelivr.net/pyodide/v0.25.1/full/",
             });
 
-            // Installiere Pygame und andere notwendige Pakete
+            // Installiere Hauptpakete (pygame-ce ist die Web-Version von Pygame)
             await pyodide.loadPackage(["pygame", "micropip"]);
 
-            // Lade und führe dein Python-Skript aus
+            // Installiere ZUSÄTZLICHE, im Code benötigte Pakete
+            console.log("Installiere pygame_gui, matplotlib, numpy...");
             await pyodide.runPythonAsync(`
                 import micropip
-                # Stelle sicher, dass pygame-ce (Community Edition) installiert wird
+                # Installiere die für den Browser optimierten Versionen
                 await micropip.install("pygame-ce")
-                
-                # Code deiner Python-Datei wird geladen und ausgeführt
-                with open("mein_spiel.py", "r") as f:
+                await micropip.install("matplotlib")
+                await micropip.install("numpy")
+                await micropip.install("pygame_gui") 
+            `);
+
+            // Führe DEINE Python-Datei aus
+            console.log("Führe Endprodukt.py aus...");
+            await pyodide.runPythonAsync(`
+                with open("Endprodukt.py", "r") as f:
                     exec(f.read())
             `);
         }
