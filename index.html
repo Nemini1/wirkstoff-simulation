@@ -28,21 +28,24 @@
                 indexURL: "https://cdn.jsdelivr.net/pyodide/v0.26.1/full/", 
             });
 
-            // Lade NUR den Paketmanager micropip (als Core-Paket)
+            // Lade NUR den Paketmanager micropip
             console.log("Lade Paketmanager micropip...");
             await pyodide.loadPackage(["micropip"]); 
 
-            // Führe das Installations-Skript aus (installiert ALLE Abhängigkeiten per micropip)
-            // Dies ist notwendig, da 'pygame' nicht mehr im direkten Index von Pyodide v0.26.1 ist.
+            // Führe das Installations-Skript aus
             console.log("Installiere ALLE Abhängigkeiten (pygame-ce, matplotlib, numpy, pygame_gui)...");
             await pyodide.runPythonAsync(`
                 import micropip
                 
-                # Installiere ALLE benötigten Pakete über micropip:
-                await micropip.install("pygame-ce")
+                # Wir installieren pygame-ce und pygame_gui HIER explizit mit einer Version.
+                # Dies umgeht den Versionskonflikt, den pygame_gui mit der von micropip
+                # standardmäßig gefundenen pygame-ce Version 2.4.1 hat.
+                await micropip.install("pygame-ce>=2.5.3")
+                await micropip.install("pygame_gui") 
+                
+                # Installiere die restlichen Pakete:
                 await micropip.install("matplotlib")
                 await micropip.install("numpy")
-                await micropip.install("pygame_gui") 
             `);
 
             // Führe DEINE Python-Datei aus
