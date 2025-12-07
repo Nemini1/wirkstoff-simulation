@@ -3,14 +3,13 @@
 <head>
     <title>Wirkstoff-Simulation (Pygame-Web)</title>
     <style>
-        /* Zentriert die Leinwand (Canvas) im Browserfenster */
         body {
             display: flex;
             justify-content: center;
             align-items: center;
             min-height: 100vh;
             margin: 0;
-            background-color: #333; /* Dunkler Hintergrund */
+            background-color: #333;
         }
     </style>
 </head>
@@ -20,66 +19,49 @@
     <script type="text/javascript" src="https://cdn.jsdelivr.net/pyodide/v0.27.0/full/pyodide.js"></script>
 
     <script type="text/javascript">
-        
-        // KRITISCHER EMCLIPSTEN FIX: Definiert die Canvas-Verknüpfung 
-        // über das globale Module-Objekt, was die robusteste Methode ist.
-        var Module = {
-            canvas: document.getElementById('canvas')
-        };
-
         async function main() {
             console.log("Starte Pyodide...");
 
-            // Lade Pyodide (v0.27.0)
-            // HINWEIS: canvasId wurde hier entfernt, da Module.canvas jetzt verwendet wird
+            // Lade Pyodide und verknüpfe den Canvas
             const pyodide = await loadPyodide({
                 indexURL: "https://cdn.jsdelivr.net/pyodide/v0.27.0/full/"
             });
+            
+            // Setze den Canvas explizit für SDL (Pygame)
+            pyodide.canvas.setCanvas2D(document.getElementById("canvas"));
 
-            // Lade NUR den Paketmanager micropip
             console.log("Lade Paketmanager micropip...");
             await pyodide.loadPackage(["micropip"]); 
 
-            // Führe das Installations-Skript aus.
-            console.log("Installiere ALLE Abhängigkeiten...");
+            console.log("Installiere Abhängigkeiten...");
             await pyodide.runPythonAsync(`
                 import micropip
-                
                 await micropip.install([
                     "pygame-ce",
-                    "pygame_gui==0.6.9", 
+                    "pygame_gui==0.6.9",
                     "matplotlib",
                     "numpy"
                 ])
             `);
             
-            // Lade die Datei Endprodukt.py vom Server und schreibe sie in das virtuelle Dateisystem (VFS)
-            console.log("Lade Endprodukt.py vom Server in das Pyodide-Dateisystem...");
-            
-            let python_code;
+            console.log("Lade Endprodukt.py...");
             try {
                 const fileResponse = await fetch("Endprodukt.py");
-                python_code = await fileResponse.text();
-
-                // Schreibe den Inhalt in das virtuelle Dateisystem von Pyodide
+                const python_code = await fileResponse.text();
                 pyodide.FS.writeFile("Endprodukt.py", python_code, { encoding: 'utf8' });
                 
+                console.log("Starte Simulation (async)...");
+                // Wir nutzen runPythonAsync, da wir jetzt asyncio im Python-Code verwenden
+                await pyodide.runPythonAsync(`
+                    import asyncio
+                    from Endprodukt import main
+                    # Startet das asynchrone Programm, ohne den Browser zu blockieren
+                    await main()
+                `);
             } catch (error) {
-                console.error("Fehler beim Laden von Endprodukt.py:", error);
-                return; 
+                console.error("Fehler:", error);
             }
-            
-            // *** KRITISCHER FIX: Verlängerte Zwangspause für Canvas-Initialisierung ***
-            // 500ms geben dem Browser Zeit, den Kontext vor Pygame-Start vollständig zu registrieren.
-            await new Promise(resolve => setTimeout(resolve, 500));
-            // *******************************************************************
-
-            // Führe DEINE Python-Datei synchron aus, um den Pygame-Loop zu starten.
-            console.log("Führe Endprodukt.py aus...");
-            pyodide.runPython(python_code); 
         }
-        
-        // Starte die Hauptfunktion
         main();
     </script>
 </body>
