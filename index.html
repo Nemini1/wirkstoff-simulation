@@ -24,8 +24,10 @@
             console.log("Starte Pyodide...");
 
             // Lade Pyodide (v0.27.0)
+            // WICHTIG: Füge canvasId hinzu, um den SDL/Emscripten-Canvas-Kontextfehler zu beheben
             const pyodide = await loadPyodide({
                 indexURL: "https://cdn.jsdelivr.net/pyodide/v0.27.0/full/", 
+                canvasId: "canvas" // <-- DIES IST DER KRITISCHE FIX
             });
 
             // Lade NUR den Paketmanager micropip
@@ -39,7 +41,7 @@
                 
                 await micropip.install([
                     "pygame-ce",
-                    "pygame_gui==0.6.9",  # Erzwungene Version zur Behebung des Versionskonflikts
+                    "pygame_gui==0.6.9",  # Erzwungene Version
                     "matplotlib",
                     "numpy"
                 ])
@@ -61,13 +63,8 @@
                 return; 
             }
 
-            // Führe DEINE Python-Datei synchron aus.
+            // Führe DEINE Python-Datei synchron aus, um den Pygame-Loop zu starten.
             console.log("Führe Endprodukt.py aus...");
-            
-            // HINWEIS: Ein Pygame-Haupt-Loop blockiert den Browser. 
-            // Obwohl runPython() synchron ist und zu einer Warnung führt, ist es oft der einzige Weg, 
-            // eine Standard-Pygame-Anwendung in Pyodide zum Laufen zu bringen. 
-            // Der Canvas-Fix sollte den fatalen Fehler nun beheben.
             pyodide.runPython(python_code); 
         }
         
