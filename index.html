@@ -27,7 +27,7 @@
             // WICHTIG: Füge canvasId hinzu, um den SDL/Emscripten-Canvas-Kontextfehler zu beheben
             const pyodide = await loadPyodide({
                 indexURL: "https://cdn.jsdelivr.net/pyodide/v0.27.0/full/", 
-                canvasId: "canvas" // <-- DIES IST DER KRITISCHE FIX
+                canvasId: "canvas"
             });
 
             // Lade NUR den Paketmanager micropip
@@ -62,6 +62,11 @@
                 console.error("Fehler beim Laden von Endprodukt.py:", error);
                 return; 
             }
+            
+            // *** KRITISCHER NEUER FIX: Zwangspause für Canvas-Initialisierung ***
+            // Dies behebt den hartnäckigen "createImageData" TypeError.
+            await new Promise(resolve => setTimeout(resolve, 100));
+            // *******************************************************************
 
             // Führe DEINE Python-Datei synchron aus, um den Pygame-Loop zu starten.
             console.log("Führe Endprodukt.py aus...");
