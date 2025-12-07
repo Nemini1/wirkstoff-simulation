@@ -39,36 +39,35 @@
                 
                 await micropip.install([
                     "pygame-ce",
-                    "pygame_gui==0.6.9",  # Erzwungene Version, um Konflikte zu vermeiden
+                    "pygame_gui==0.6.9",  # Erzwungene Version zur Behebung des Versionskonflikts
                     "matplotlib",
                     "numpy"
                 ])
             `);
             
-            // NEUE LOGIK: Lade die Datei Endprodukt.py vom Server und schreibe sie in das virtuelle Dateisystem (VFS)
+            // Lade die Datei Endprodukt.py vom Server und schreibe sie in das virtuelle Dateisystem (VFS)
             console.log("Lade Endprodukt.py vom Server in das Pyodide-Dateisystem...");
             
+            let python_code;
             try {
                 // 1. Rufe die Datei Endprodukt.py vom Server ab (mit JavaScript)
                 const fileResponse = await fetch("Endprodukt.py");
-                const fileContent = await fileResponse.text();
+                python_code = await fileResponse.text();
 
-                // 2. Schreibe den Inhalt in das virtuelle Dateisystem von Pyodide (FS.writeFile)
-                pyodide.FS.writeFile("Endprodukt.py", fileContent, { encoding: 'utf8' });
+                // 2. Schreibe den Inhalt in das virtuelle Dateisystem von Pyodide
+                pyodide.FS.writeFile("Endprodukt.py", python_code, { encoding: 'utf8' });
                 
             } catch (error) {
                 console.error("Fehler beim Laden von Endprodukt.py:", error);
-                // WICHTIG: Sollte dieser Fehler auftreten, prüfen Sie, ob Endprodukt.py auf derselben Ebene liegt wie index.html
                 return; 
             }
 
             // Führe DEINE Python-Datei aus
+            // WICHTIG: Verwende pyodide.runPython() synchron, um den Pygame-Loop richtig zu starten.
             console.log("Führe Endprodukt.py aus...");
-            await pyodide.runPythonAsync(`
-                # Die Datei ist jetzt im VFS verfügbar und kann ausgeführt werden.
-                with open("Endprodukt.py", "r") as f:
-                    exec(f.read())
-            `);
+            pyodide.runPython(python_code); // <<< Synchroner Aufruf der geladenen Datei
+
+            // WICHTIG: Die Simulation wird jetzt im synchronen Aufruf gestartet.
         }
         
         // Starte die Hauptfunktion
