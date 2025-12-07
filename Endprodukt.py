@@ -1,46 +1,34 @@
 """
-Protein-Ligand Simulation (Web-Compatible)
+Protein-Ligand Simulation (Browser Optimized)
 """
 
-import sys
-import asyncio  # WICHTIG: Für den Browser
+import asyncio
 import pygame
 import random
 import math
 from dataclasses import dataclass
 
-try:
-    import pygame_gui
-except ImportError:
-    print("Pygame_gui is not installed.")
-    sys.exit()
+# Imports (Dependencies are installed via index.html)
+import pygame_gui
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_agg import FigureCanvasAgg
+import numpy as np
 
-try:
-    import matplotlib.pyplot as plt
-    from matplotlib.backends.backend_agg import FigureCanvasAgg
-    import numpy as np
-except ImportError:
-    print("Matplotlib or Numpy is not installed.")
-    sys.exit()
-
-# --- Constants and UI Configuration ---
+# --- Constants ---
 SCREEN_WIDTH = 1200
 SCREEN_HEIGHT = 800
 SIDEBAR_WIDTH = 300
-GRAPH_HEIGHT = 200
 
-# Colors (RGB)
+# Colors
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
-LIGHT_GREY = (200, 200, 200)
-DARK_GREY = (50, 50, 50)
 BLUE = (50, 100, 150)
-GREEN = (70, 130, 80)
 PROTEIN_COLOR = (255, 100, 100)
 NORMAL_LIGAND_COLOR = (100, 150, 255)
 COMPETITOR_LIGAND_COLOR = (255, 0, 0)
 BOUND_LIGAND_COLOR = (255, 255, 0)
 DOCKING_SITE_COLOR = (255, 255, 255)
+DARK_GREY = (50, 50, 50)
 
 @dataclass
 class Parameters:
@@ -139,13 +127,11 @@ class Simulation:
         self.ligands = []
         self.competitor_ligands = []
         
-        # --- FIX: THEME LADEN ---
-        # Wir übergeben hier "theme.json", damit pygame_gui weiß, welche Schriftart es nutzen soll.
-        # Wenn wir das nicht tun, versucht es die Standard-Schriftart zu laden und stürzt im Web ab.
+        # Load Theme (Provided by index.html)
         try:
             self.ui_manager = pygame_gui.UIManager((SCREEN_WIDTH, SCREEN_HEIGHT), "theme.json")
         except:
-            print("Warnung: theme.json nicht gefunden, versuche Standard...")
+            print("Warning: theme.json not found, using default (might crash in web).")
             self.ui_manager = pygame_gui.UIManager((SCREEN_WIDTH, SCREEN_HEIGHT))
 
         self._setup_ui_elements()
@@ -156,7 +142,6 @@ class Simulation:
         panel_rect = pygame.Rect(self.sidebar_rect.topleft, (self.sidebar_rect.width, self.sidebar_rect.height))
         self.ui_panel = pygame_gui.elements.UIPanel(relative_rect=panel_rect, manager=self.ui_manager)
         
-        # UI Elements Creation (gekürzt, Logik bleibt identisch)
         self.reset_button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((20, 20), (self.sidebar_rect.width - 40, 40)), text='Reset Simulation', manager=self.ui_manager, container=self.ui_panel)
         self.pause_button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((20, 70), (self.sidebar_rect.width / 2 - 25, 40)), text='Pause', manager=self.ui_manager, container=self.ui_panel)
         self.resume_button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((self.sidebar_rect.width / 2 + 5, 70), (self.sidebar_rect.width / 2 - 25, 40)), text='Resume', manager=self.ui_manager, container=self.ui_panel)
@@ -254,21 +239,19 @@ class Simulation:
             competitor.unbind()
 
     def _update_particle_counts(self):
-        # Proteine update logic
+        # Update logic
         if len(self.proteins) < self.params.num_proteins:
             for _ in range(self.params.num_proteins - len(self.proteins)):
                 self.proteins.append(self._create_particle(Protein))
         elif len(self.proteins) > self.params.num_proteins:
              for _ in range(len(self.proteins) - self.params.num_proteins):
                  if self.proteins: self.proteins.pop().bound_ligands.clear()
-        # Ligands update logic
         if len(self.ligands) < self.params.num_ligands:
              for _ in range(self.params.num_ligands - len(self.ligands)):
                  l = self._create_particle(Ligand); self.ligands.append(l); l.unbind()
         elif len(self.ligands) > self.params.num_ligands:
              for _ in range(len(self.ligands) - self.params.num_ligands):
                  if self.ligands: self.ligands.pop()
-        # Competitors update logic
         if len(self.competitor_ligands) < self.params.num_competitor_ligands:
              for _ in range(self.params.num_competitor_ligands - len(self.competitor_ligands)):
                  c = self._create_particle(CompetitorLigand); self.competitor_ligands.append(c); c.unbind()
@@ -324,7 +307,7 @@ class Simulation:
         graph_surf = self._draw_graph()
         self.screen.blit(graph_surf, (self.sidebar_rect.x + 20, 550))
 
-    # --- ASYNC LOOP ---
+    # --- ASYNC RUN LOOP ---
     async def run(self):
         running = True
         while running:
@@ -360,11 +343,11 @@ class Simulation:
             self._draw_ui()
             pygame.display.flip()
             
-            # WICHTIG: Gibt dem Browser Zeit zum Zeichnen
+            # CRITICAL: Let the browser breathe
             await asyncio.sleep(0)
 
         pygame.quit()
-        sys.exit()
+        # REMOVED sys.exit() because it crashes Pyodide/Browser environments
 
 async def main():
     simulation = Simulation()
